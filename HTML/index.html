@@ -38,31 +38,38 @@ body {
 var lang = navigator.language || navigator.userLanguage;
 var r = new j();
 var status ={};
+var rt = 500; // (initial) refresh time for status in milliseconds
+var old_json = ""; // form comparing whether status has been updated
 
-	/* For debugging: */
-  if (window.location.hostname == "localhost")
-    uriprefix="/cgi-bin/get";
-  else
-    uriprefix="/WIFICTRL/";
+/* For debugging: */
+if (window.location.hostname == "heilig-family.selfhost.eu")
+  cgipath="cgi-bin/status.cgi"
+else
+  cgipath="/WIFICTRL/status.lua";
+  
 
-function getStatusXhr() {
-	geturi = uriprefix + "status.lua?cmd=get";
+function getStatusXhr(flag) {
+	geturi = cgipath + "?cmd=get";
   r.open("GET", geturi, true);
   r.onreadystatechange = function () {
 	  if (r.readyState == 4)
 	  {
-	    populateStatus(r.responseText);
+	    populateStatus(r.responseText, flag);
 	  }
   };
   r.send()
 }
 
-function populateStatus(jsondata) {
+function populateStatus(jsondata, do_cyclic) {
   var para=t('<div id="#{s[this].name}">' +
              '#{s[this].name}: '+
              '<span class="val">#{s[this].value}</span>'+
              '</div>')
-  s = JSON.parse(jsondata);
+  try {
+    s = JSON.parse(jsondata);
+  } catch (e) {
+    s="";
+  }
   for (e in s) {
     el=$('#'+s[e].name);
     if (el)
@@ -72,23 +79,33 @@ function populateStatus(jsondata) {
       $('#last').insertAdjacentHTML( 'beforebegin', para(e));
     }
   }
+  if (jsondata == old_json)
+  {
+    // status has not been updated ==> increase update interval
+    if (rt < 5000) rt += 500
+  }
+  old_json = jsondata;
+  if (do_cyclic) {
+    setTimeout(getStatusXhr(true), rt);
+  }
 }
 
 
 function action(cmd) {
-	geturi = uriprefix + "status.lua?cmd=set&par="+cmd;
+  rt = 500;
+	geturi = cgipath + "?cmd=set&par="+cmd;
   r.open("GET", geturi, true);
   r.onreadystatechange = function () {
 	  if (r.readyState == 4)
 	  {
-	    populateStatus(r.responseText);
+	    populateStatus(r.responseText, true);
 	  }
   };
   r.send()
 }
 
 window.onload=function(e) {
-	getStatusXhr();
+	getStatusXhr(true);
 };
 
 </script>
@@ -99,6 +116,7 @@ window.onload=function(e) {
   <h1>Camera WiFi Remote Control</h1>
     <table><tbody>
       <tr class="center img_sm"><td onclick="action('ZOOMOUT')"><img src="zoomout.png" alt="Zoom Out"/><br />Zoom Out</td><td onclick="action('ZOOMIN')"><img src="zoomin.png" alt="Zoom In"/><br />Zoom In</td></tr>
+      <tr class="center"><td colspan="2"><progress max="100" value="50">30</progress></td></tr>
       <tr class="center"><td colspan="2" onclick="action('SHOOT')"><img align="middle" style="width:50%;" src="shutter.png" alt="Take Picture"/><br />Take Picture!</td></tr>
     </tbody></table>
     <hr />
