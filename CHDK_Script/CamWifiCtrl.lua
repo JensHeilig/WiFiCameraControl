@@ -66,6 +66,7 @@ function clearDir(d)
 end
 ---------------------------------------------------------
 -- Clean (or create, if it does not exist yet) data and stat directory before start
+print("Activate Flashair WiFi and load http://flashair/wifictrl/index.html")
 if os.stat(DATADIR)==nil then os.mkdir(DATADIR) end
 if os.stat(STATDIR)==nil then os.mkdir(STATDIR) end
 
