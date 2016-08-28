@@ -40,13 +40,16 @@ var r = new j();
 var status ={};
 var rt = 500; // (initial) refresh time for status in milliseconds
 var old_json = ""; // form comparing whether status has been updated
+var bindings;  // a list of values and binding-expression for updating the page from dynamic values
 
 /* For debugging: */
 if (window.location.hostname == "heilig-family.selfhost.eu")
   cgipath="cgi-bin/status.cgi"
 else
   cgipath="/WIFICTRL/status.lua";
-  
+
+//var list_of_bound_stuff = {"key": { "value:"the value", "binding" : [dom_el1, dom_el2, ...] } };
+
 
 function getStatusXhr(flag) {
 	geturi = cgipath + "?cmd=get";
@@ -70,24 +73,46 @@ function populateStatus(jsondata, do_cyclic) {
   } catch (e) {
     s="";
   }
-  for (e in s) {
-    el=$('#'+s[e].name);
-    if (el)
-    {
-      $(".val", el)[0].innerHTML=s[e].value;
-    } else {
+  // loop through all objects of the received JSON data
+  for (var e in s) {
+    el=$('#'+s[e].name);  // check if an element is already present in the DOM
+    if (!el) {
+      // element is not present yet, add it to DOM
       $('#last').insertAdjacentHTML( 'beforebegin', para(e));
+      // add element to bindings list if it does not exist yet
+      if (! bindings[s[e].name]) {
+        bindings[s[e].name]={};
+        bindings[s[e].name].oldvalue=-1;
+        bindings[s[e].name].binding=[];
+      }
+      // The binding must be added, even if the element already existed otherwise
+      bindings[s[e].name].binding.push('$(".val", $("#' + s[e].name + '"))[0].innerHTML');
+    }
+    // add new value from JSON data to bindings list
+    if (bindings[s[e].name]) {
+      bindings[s[e].name].value = s[e].value;
     }
   }
-  if (jsondata == old_json)
-  {
+  // check if any value changed, if not, increase update interval
+  var inc=true;
+  for (var i in bindings) {
+    if (bindings[i].oldvalue != bindings[i].value) {
+      rt = 500;
+      inc = false;
+      break;
+    }
+  }
+  if (inc) {
     // status has not been updated ==> increase update interval
     if (rt < 5000) rt += 500
   }
-  old_json = jsondata;
+
   if (do_cyclic) {
-    setTimeout(getStatusXhr(true), rt);
+    setTimeout(function() {getStatusXhr(true);}, rt);
   }
+
+  // call function to update the DOM with new values
+  updBoundItems();
 }
 
 
@@ -98,14 +123,31 @@ function action(cmd) {
   r.onreadystatechange = function () {
 	  if (r.readyState == 4)
 	  {
-	    populateStatus(r.responseText, true);
+	    populateStatus(r.responseText, false);
 	  }
   };
   r.send()
 }
 
+function updBoundItems() {
+  Object.keys(bindings).forEach(function(key,index) {
+    // key: the name of the object key
+    // index: the ordinal position of the key within the object
+    var p = bindings[key];
+    // alert("Key: " + key + "    Wert: " + bindings[key].value + "  Anzahl bindings:" + bindings[key].binding.length);
+    if (p.value != p.oldvalue) {
+      p.oldvalue = p.value;
+      for (var i in bindings[key].binding) {
+        eval(p.binding[i] + " = \"" + p.value + "\"");
+      }
+    }
+  });
+}
+
 window.onload=function(e) {
 	getStatusXhr(true);
+  bindings={"Zoom":{value:"0", binding:['$("#zoomslider").value'], oldvalue:"-1"}
+           };
 };
 
 </script>
@@ -116,7 +158,7 @@ window.onload=function(e) {
   <h1>Camera WiFi Remote Control</h1>
     <table><tbody>
       <tr class="center img_sm"><td onclick="action('ZOOMOUT')"><img src="zoomout.png" alt="Zoom Out"/><br />Zoom Out</td><td onclick="action('ZOOMIN')"><img src="zoomin.png" alt="Zoom In"/><br />Zoom In</td></tr>
-      <tr class="center"><td colspan="2"><progress max="100" value="50">30</progress></td></tr>
+      <tr class="center"><td colspan="2"><progress id="zoomslider" max="100" value="50"></progress></td></tr>
       <tr class="center"><td colspan="2" onclick="action('SHOOT')"><img align="middle" style="width:50%;" src="shutter.png" alt="Take Picture"/><br />Take Picture!</td></tr>
     </tbody></table>
     <hr />
