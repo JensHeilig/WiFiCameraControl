@@ -28,6 +28,12 @@ body {
 .center {
   text-align: center;
 }
+.left {
+  text-align: left;
+}
+.right {
+  text-align: right;
+}
 .img_sm img {
   width: 80%; 
   height: auto;
@@ -39,8 +45,10 @@ var lang = navigator.language || navigator.userLanguage;
 var r = new j();
 var status ={};
 var rt = 500; // (initial) refresh time for status in milliseconds
-var old_json = ""; // form comparing whether status has been updated
 var bindings;  // a list of values and binding-expression for updating the page from dynamic values
+var tmr_cntDn; // Timer reference for Countdown Interval
+var cntr_cntDn = null; // Countdown Counter
+var tmr_id = null;  // Timer ID for first shot delay
 
 /* For debugging: */
 if (window.location.hostname == "heilig-family.selfhost.eu")
@@ -129,6 +137,33 @@ function action(cmd) {
   r.send()
 }
 
+function shoot(cmd) {
+  cntr_cntDn = $("#delay").value * 1000;
+  if (tmr_cntDn) {
+    clearInterval(cntr_cntDn);
+    cntr_cntDn = null;
+  }
+  if (tmr_id) {
+    clearTimeout(tmr_id);
+    tmr_id = null;
+  }
+  if (cntr_cntDn > 0)
+  {
+    tmr_cntDn = setInterval(countDown, 1000);
+  }
+  tmr_id = setTimeout(function() { action(cmd); }, cntr_cntDn);
+}
+
+function countDown() {
+  cntr_cntDn -= 1000;
+  alert("Countdown: " + cntr_cntDn);
+  if (cntr_cntDn <= 0) {
+    cntr_cntDn = 0;
+    clearInterval(tmr_cntDn);
+    tmr_cntDn = null;
+  }
+}
+
 function updBoundItems() {
   Object.keys(bindings).forEach(function(key,index) {
     // key: the name of the object key
@@ -149,7 +184,6 @@ window.onload=function(e) {
   bindings={"Zoom":{value:"0", binding:['$("#zoomslider").value'], oldvalue:"-1"}
            };
 };
-
 </script>
 
 </head>
@@ -159,7 +193,10 @@ window.onload=function(e) {
     <table><tbody>
       <tr class="center img_sm"><td onclick="action('ZOOMOUT')"><img src="zoomout.png" alt="Zoom Out"/><br />Zoom Out</td><td onclick="action('ZOOMIN')"><img src="zoomin.png" alt="Zoom In"/><br />Zoom In</td></tr>
       <tr class="center"><td colspan="2"><progress id="zoomslider" max="100" value="50"></progress></td></tr>
-      <tr class="center"><td colspan="2" onclick="action('SHOOT')"><img align="middle" style="width:50%;" src="shutter.png" alt="Take Picture"/><br />Take Picture!</td></tr>
+      <tr class="center"><td colspan="2" onclick="shoot('SHOOT_'+$('#num_shots').value+'_'+$('#intvl').value)"><img align="middle" style="width:50%;" src="shutter.png" alt="Take Picture"/><br />Take Picture!</td></tr>
+      <tr class="right"><td>Number of shots:</td><td class="left"><input id="num_shots" type="number" min="1" max="100" step="1" value="1"></td></tr>
+      <tr class="right"><td>Interval between shots:</td><td class="left"><input id="intvl" type="number" min="1" max="1000" step="1" value="1"> seconds</td></tr>
+      <tr class="right"><td>Delay until first shot:</td><td class="left"><input id="delay" type="number" min="0" max="1000" step="1" value="0"> seconds</td></tr>
     </tbody></table>
     <hr />
   <div id="status">
