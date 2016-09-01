@@ -63,7 +63,7 @@ end
 function reportStats(t)
   local s=getStats()
   writeMap(s, STATFILE)
-  if (t ~= 0 and t > 0)
+  if (t > 0) then
     sleep (t)
     reportStats(0)
   end
@@ -89,8 +89,10 @@ function splitStr(str)
 end
 
 -- take n pictures with interval time ival
-function multishoot(n, ival)
+function multiShoot(n, ival)
   local i
+  n=tonumber(n)
+  ival = tonumber (ival)
   if (n == nil or n < 0) then n=1 end
   for i = 1,n do
     shoot()
@@ -119,7 +121,7 @@ repeat
 		count = table.getn(files)
 		for i = 1, count do
 		  local cmd = splitStr(files[i])
-			if (cmdlist[string.upper(cmd[1]])) then cmdlist[string.upper(cmd[1])](cmd) end
+			if (cmdlist[string.upper(cmd[1])]) then cmdlist[string.upper(cmd[1])](cmd) end
 			os.remove(DATADIR .. "/" .. files[i])
 		end
 	end
