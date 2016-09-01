@@ -75,8 +75,7 @@ function readCHDKStatus(fname)
     dofile(fname)
   else
     props = {}
-    props["Last Image"] = 12345
-    props["Free Space on SD"] = 23
+    --props["Last Image"] = 12345
   end
 end
 

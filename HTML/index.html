@@ -50,6 +50,8 @@ var tmr_cntDn; // Timer reference for Countdown Interval
 var cntr_cntDn = null; // Countdown Counter
 var tmr_id = null;  // Timer ID for first shot delay
 
+var str_CntDn="Countdown" // string literal used in several places
+
 /* For debugging: */
 if (window.location.hostname == "heilig-family.selfhost.eu")
   cgipath="cgi-bin/status.cgi"
@@ -140,8 +142,8 @@ function action(cmd) {
 function shoot(cmd) {
   cntr_cntDn = $("#delay").value * 1000;
   if (tmr_cntDn) {
-    clearInterval(cntr_cntDn);
-    cntr_cntDn = null;
+    clearInterval(tmr_cntDn);
+    tmr_cntDn = null;
   }
   if (tmr_id) {
     clearTimeout(tmr_id);
@@ -150,17 +152,20 @@ function shoot(cmd) {
   if (cntr_cntDn > 0)
   {
     tmr_cntDn = setInterval(countDown, 1000);
+    populateStatus('[{"name":"' + str_CntDn + '","value":"' + cntr_cntDn/1000 + '"}]', false);
   }
   tmr_id = setTimeout(function() { action(cmd); }, cntr_cntDn);
 }
 
 function countDown() {
   cntr_cntDn -= 1000;
-  alert("Countdown: " + cntr_cntDn);
+  populateStatus('[{"name":"' + str_CntDn + '","value":"' + cntr_cntDn/1000 + '"}]', false);
   if (cntr_cntDn <= 0) {
     cntr_cntDn = 0;
     clearInterval(tmr_cntDn);
     tmr_cntDn = null;
+    el=$('#' + str_CntDn);
+    el.parentNode.removeChild(el);
   }
 }
 
