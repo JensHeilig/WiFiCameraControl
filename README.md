@@ -5,6 +5,10 @@ This software allows control of a Canon point-and-shoot camera from your Smartph
 
 The camera must be equipped with a [Toshiba FlashAir WiFi card](https://www.toshiba.co.jp/p-media/wwsite/flashair.htm) and the [CHDK software](http://chdk.wikia.com/wiki/CHDK).
 
+## Download
+The latest version can be downloaded [here](https://github.com/JensHeilig/WiFiCameraControl/releases/latest).
+See below for installation instructions.
+
 ## Installation
 * Get a Toshiba FlashAir SD-card for your camera. Only type W-03 works, do not use the older types W-02 or W-01. 32GB can be had for 30 US-Dollar or Euro.
 * [Download](http://chdk.wikia.com/wiki/Downloads#Links_to_the_Different_CHDK_Builds) and install CHDK on the camera SD-card as per [these instructions](http://chdk.wikia.com/wiki/Downloads#Installation) (looks harder than it is).
