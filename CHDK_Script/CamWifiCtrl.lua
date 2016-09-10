@@ -67,7 +67,6 @@ function getStats()
   s[STR_REMIMGS] = get_jpg_count()
   s[STR_BATVOLT] = get_vbatt()/1000 .. " V"
   s[STR_ZOOM] = get_zoom()
-  s["Debug:"] = string.format('%s/IMG_%04d.JPG',get_image_dir(),get_exp_count())
   return s
 end
 
