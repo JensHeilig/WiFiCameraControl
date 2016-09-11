@@ -35,8 +35,29 @@ body {
   text-align: right;
 }
 .img_sm img {
-  width: 80%; 
+  width: 60%; 
   height: auto;
+}
+.o3 {
+-moz-transform: rotate(180deg);  /* FF3.5/3.6 */
+-o-transform: rotate(180deg);  /* Opera 10.5 */
+-webkit-transform: rotate(180deg);  /* Saf3.1+ */
+transform: rotate(180deg);  /* Newer browsers (incl IE9) */
+}
+.o6 {
+-moz-transform: rotate(90deg);  /* FF3.5/3.6 */
+-o-transform: rotate(90deg);  /* Opera 10.5 */
+-webkit-transform: rotate(90deg);  /* Saf3.1+ */
+transform: rotate(90deg);  /* Newer browsers (incl IE9) */
+}
+.o8 {
+-moz-transform: rotate(270deg);  /* FF3.5/3.6 */
+-o-transform: rotate(270deg);  /* Opera 10.5 */
+-webkit-transform: rotate(270deg);  /* Saf3.1+ */
+transform: rotate(270deg);  /* Newer browsers (incl IE9) */
+}
+input[type="number"] {
+   width:50px;
 }
 </style>
 
@@ -57,8 +78,6 @@ if (window.location.hostname == "heilig-family.selfhost.eu")
   cgipath="cgi-bin/status.cgi"
 else
   cgipath="/WIFICTRL/status.lua";
-
-//var list_of_bound_stuff = {"key": { "value:"the value", "binding" : [dom_el1, dom_el2, ...] } };
 
 
 function getStatusXhr(flag) {
@@ -85,18 +104,21 @@ function populateStatus(jsondata, do_cyclic) {
   }
   // loop through all objects of the received JSON data
   for (var e in s) {
-    el=$('#'+s[e].name);  // check if an element is already present in the DOM
-    if (!el) {
-      // element is not present yet, add it to DOM
-      $('#last').insertAdjacentHTML( 'beforebegin', para(e));
-      // add element to bindings list if it does not exist yet
-      if (! bindings[s[e].name]) {
-        bindings[s[e].name]={};
-        bindings[s[e].name].oldvalue=-1;
-        bindings[s[e].name].binding=[];
+    // check if element is supposed to be displayed
+    if ( ! s[e].name.startsWith("_")) {
+      el=$('#'+s[e].name);  // check if element is already present in the DOM
+      if (!el) {
+        // element is not present yet, add it to DOM
+        $('#last').insertAdjacentHTML('beforebegin', para(e));
+        // add element to bindings list if it does not exist yet
+        if (! bindings[s[e].name]) {
+          bindings[s[e].name]={};
+          bindings[s[e].name].oldvalue=-1;
+          bindings[s[e].name].binding=[];
+        }
+        // The binding must be added, even if the element already existed otherwise
+        bindings[s[e].name].binding.push(function(name, val){$(".val", $("#" + name))[0].innerHTML = val});
       }
-      // The binding must be added, even if the element already existed otherwise
-      bindings[s[e].name].binding.push('$(".val", $("#' + s[e].name + '"))[0].innerHTML');
     }
     // add new value from JSON data to bindings list
     if (bindings[s[e].name]) {
@@ -125,14 +147,47 @@ function populateStatus(jsondata, do_cyclic) {
   updBoundItems();
 }
 
+function load_img(image_path, img) { 
+    // Use a native XHR so we can use custom responseType
+    var xhr = new j();
+    xhr.open("GET", image_path, true);
+    // Ask for the result as an ArrayBuffer.
+    xhr.responseType = "arraybuffer";
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState == 4)
+        // Obtain a blob: URL for the image data to draw it
+        var arrayBufferView = new Uint8Array( this.response );
+        var blob = new Blob( [ arrayBufferView ], { type: "image/jpeg" } );
+        var imageUrl = URL.createObjectURL( blob );
+        img.src = imageUrl;
+        // Get the image properties from Header
+        var orient = this.getResponseHeader('X-exif-ORIENTATION');
+        switch (orient) {
+          case "3":
+            img.className="o3";
+            break;
+          case "6":
+            img.className="o6";
+            break;
+          case "8":
+            img.className="o8";
+            break;
+          case "1":
+          default:
+            img.className="";
+            break;
+        }
+    };
+    xhr.send();
+}
 
 function action(cmd) {
   rt = 500;
 	geturi = cgipath + "?cmd=set&par="+cmd;
+	var r = new j();
   r.open("GET", geturi, true);
   r.onreadystatechange = function () {
-	  if (r.readyState == 4)
-	  {
+	  if (r.readyState == 4) {
 	    populateStatus(r.responseText, false);
 	  }
   };
@@ -174,11 +229,10 @@ function updBoundItems() {
     // key: the name of the object key
     // index: the ordinal position of the key within the object
     var p = bindings[key];
-    // alert("Key: " + key + "    Wert: " + bindings[key].value + "  Anzahl bindings:" + bindings[key].binding.length);
     if (p.value != p.oldvalue) {
       p.oldvalue = p.value;
       for (var i in bindings[key].binding) {
-        eval(p.binding[i] + " = \"" + p.value + "\"");
+        p.binding[i] (key, p.value);
       }
     }
   });
@@ -186,7 +240,8 @@ function updBoundItems() {
 
 window.onload=function(e) {
 	getStatusXhr(true);
-  bindings={"Zoom":{value:"0", binding:['$("#zoomslider").value'], oldvalue:"-1"}
+  bindings={"Zoom":{value:"0", binding:[function (name, val) {$("#zoomslider").value = val}], oldvalue:"-1"},
+            "_Last Image":{value:"", binding:[function(name, val){load_img("/thumbnail.cgi?" + val,$("#sbild")); $("#sbild").parentElement.style.height=$("#sbild").width+"px"}], oldvalue:"none"}
            };
 };
 </script>
@@ -195,20 +250,20 @@ window.onload=function(e) {
 <body>
 <div class="fs7">
   <h1>Camera WiFi Remote Control</h1>
-    <table><tbody>
-      <tr class="center img_sm"><td onclick="action('ZOOMOUT')"><img src="zoomout.png" alt="Zoom Out"/><br />Zoom Out</td><td onclick="action('ZOOMIN')"><img src="zoomin.png" alt="Zoom In"/><br />Zoom In</td></tr>
+    <table width="100%"><tbody>
+      <tr class="center"><td colspan="2" onclick="shoot('SHOOT_'+$('#num_shots').value+'_'+$('#intvl').value)"><img align="middle" style="width:30%;" src="shutter.png" alt="Take Picture"/><br />Take Picture!</td></tr>
+      <tr class="center"><td colspan="2"><img id="sbild"/></td></tr>
+      <tr class="center img_sm"><td width="50%" onclick="action('ZOOMOUT')"><img src="zoomout.png" alt="Zoom Out"/><br />Zoom Out</td><td width="50%" onclick="action('ZOOMIN')"><img src="zoomin.png" alt="Zoom In"/><br />Zoom In</td></tr>
       <tr class="center"><td colspan="2"><progress id="zoomslider" max="100" value="50"></progress></td></tr>
-      <tr class="center"><td colspan="2" onclick="shoot('SHOOT_'+$('#num_shots').value+'_'+$('#intvl').value)"><img align="middle" style="width:50%;" src="shutter.png" alt="Take Picture"/><br />Take Picture!</td></tr>
       <tr class="right"><td>Number of shots:</td><td class="left"><input id="num_shots" type="number" min="1" max="100" step="1" value="1"></td></tr>
-      <tr class="right"><td>Interval between shots:</td><td class="left"><input id="intvl" type="number" min="1" max="1000" step="1" value="1"> seconds</td></tr>
-      <tr class="right"><td>Delay until first shot:</td><td class="left"><input id="delay" type="number" min="0" max="1000" step="1" value="0"> seconds</td></tr>
+      <tr class="right"><td>Interval between shots:</td><td class="left"><input id="intvl" type="number" min="1" max="36000" step="1" value="5"> seconds</td></tr>
+      <tr class="right"><td>Delay until first shot:</td><td class="left"><input id="delay" type="number" min="0" max="36000" step="1" value="0"> seconds</td></tr>
     </tbody></table>
     <hr />
   <div id="status">
   <div id="last">
   </div>
   </div>
-
 </div>
 
 <div>

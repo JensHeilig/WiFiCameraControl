@@ -29,7 +29,9 @@ cmdlist = {
 	["STATS"]= function(params)  reportStats(true) end,
 }
 
-STR_THUMB="Last Image"
+-- Strings identifying status items. If string starts with underscore ("_") it wikk
+-- not be displayed on the HTML page
+STR_THUMB="_Last Image"
 STR_LASTIMAGE="Last Image Name"
 STR_FREESPACE="Free Space on SD"
 STR_REMIMGS="Remaining jpg images"
@@ -59,13 +61,11 @@ end
 -- returns a LUA map of various camera stats
 function getStats()
   s = {}
-  s[STR_THUMB] = "<img src='/thumbnail.cgi?/" ..
-                 string.format("%s/IMG_%04d.JPG'",string.gsub(get_image_dir(),"A/","",1),get_exp_count()) ..
-                 ' />'
+  s[STR_THUMB] = string.format("%s/IMG_%04d.JPG",string.gsub(get_image_dir(),"A/","",1),get_exp_count())
   s[STR_LASTIMAGE] = "IMG_"..get_exp_count()
   s[STR_FREESPACE] = get_free_disk_space()/1024 .. " MB"
   s[STR_REMIMGS] = get_jpg_count()
-  s[STR_BATVOLT] = get_vbatt()/1000 .. " V"
+  s[STR_BATVOLT] = string.format("%d.%d V", get_vbatt()/1000, get_vbatt()/10 - ((get_vbatt()/1000)*100))
   s[STR_ZOOM] = get_zoom()
   return s
 end
