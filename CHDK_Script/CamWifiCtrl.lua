@@ -23,19 +23,29 @@ STATFILE = STATDIR .. "/stats.txt"
 
 -- list of available commands understood by this script
 cmdlist = {
-	["ZOOMIN"]= function(params) click("zoom_in") reportStats(500) end,
-	["ZOOMOUT"]= function(params) click("zoom_out") reportStats(500) end,
-	["SHOOT"]= function(params) multiShoot(params[2], params[3]) reportStats(1000) end,
-	["STATS"]= function(params)  reportStats(0) end,
+	["ZOOMIN"]= function(params) click("zoom_in") end,
+	["ZOOMOUT"]= function(params) click("zoom_out") end,
+	["SHOOT"]= function(params) multiShoot(params[2], params[3]) end,
+	["STATS"]= function(params)  reportStats(true) end,
 }
 
-stats={}
+-- Strings identifying status items. If string starts with underscore ("_") it wikk
+-- not be displayed on the HTML page
+STR_THUMB="_Last Image"
+STR_LASTIMAGE="Last Image Name"
+STR_FREESPACE="Free Space on SD"
+STR_REMIMGS="Remaining jpg images"
+STR_BATVOLT="Battery Voltage"
+STR_ZOOM="Zoom"
+
+DIRTYCHECKS={STR_LASTIMAGE, STR_ZOOM} -- these stats are tested for a change before reporting new status
+oldstats = {}
+statctr=1
 
 -- Write a map to file fname for another LUA script to read back via "dofile()"
 function writeMap(m, fname)
 	local f = io.open(fname,"w" )
 	if f == nil then print("no stat:"..fname) return end
-	--f:write( string.format( html,100*get_zoom()/ZOOMMAX, os.date('%m'), lastCnt, lastCnt))
   for k,v in pairs(m) do
     local t = { }
     t[1] = 'props["'
@@ -51,22 +61,26 @@ end
 -- returns a LUA map of various camera stats
 function getStats()
   s = {}
-  s["Last Image"] = "IMG_"..get_exp_count()
-  s["Free Space on SD"] = get_free_disk_space()
-  s["Remaining jpg Images"] = get_jpg_count()
-  s["Battery Voltage"] = get_vbatt()
-  s["Zoom"] = get_zoom()
+  s[STR_THUMB] = string.format("%s/IMG_%04d.JPG",string.gsub(get_image_dir(),"A/","",1),get_exp_count())
+  s[STR_LASTIMAGE] = "IMG_"..get_exp_count()
+  s[STR_FREESPACE] = get_free_disk_space()/1024 .. " MB"
+  s[STR_REMIMGS] = get_jpg_count()
+  s[STR_BATVOLT] = string.format("%d.%d V", get_vbatt()/1000, get_vbatt()/10 - ((get_vbatt()/1000)*100))
+  s[STR_ZOOM] = get_zoom()
   return s
 end
 
--- reports camera stats via file exchange to flashair script
-function reportStats(t)
+-- reports camera stats via file exchange to flashair script if certain stats have changed
+function reportStats(forcewrite)
+  local dirty = forcewrite
   local s=getStats()
-  writeMap(s, STATFILE)
-  if (t > 0) then
-    sleep (t)
-    reportStats(0)
+  if (s[STR_LASTIMAGE] ~= oldstats[STR_LASTIMAGE]) then dirty = true end
+  if (s[STR_ZOOM] ~= oldstats[STR_ZOOM]) then dirty = true end
+  if (dirty == true) then
+    writeMap(s, STATFILE)
+    statctr = statctr + 1
   end
+  oldstats = s
 end
 
 -- clears all files in a directory
@@ -97,6 +111,7 @@ function multiShoot(n, ival)
   for i = 1,n do
     shoot()
     if (ival and (ival ~= 0)) then
+      reportStats(false)
       sleep(ival)
     end
   end
@@ -112,8 +127,10 @@ if os.stat(STATDIR)==nil then os.mkdir(STATDIR) end
 clearDir(DATADIR)
 clearDir(STATDIR)
 
+local ctr=1
+local force=false
 repeat
-	wait_click(100)
+	wait_click(50)
 	if is_key("set") then
 		break
 	else
@@ -124,5 +141,12 @@ repeat
 			if (cmdlist[string.upper(cmd[1])]) then cmdlist[string.upper(cmd[1])](cmd) end
 			os.remove(DATADIR .. "/" .. files[i])
 		end
+		ctr = ctr - 1
+		if (ctr <= 0) then
+		  ctr = 100
+		  force = true
+		end
+		reportStats(force)
+		force = false
 	end
 until (false)
